@@ -1,0 +1,12 @@
+[package]
+name = "spl-stake-pool-example"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+borsh = "1.5"
+clap = { version = "3.2.23", features = ["derive"] }
+solana-clap-v3-utils = "2.1" 
+solana-client = "2.0.18"
+solana-sdk = "2.0.18"
+spl-stake-pool = "2.0"
