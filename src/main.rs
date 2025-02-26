@@ -42,15 +42,6 @@ fn main() {
 
     let stake_pool_pubkey = args.stake_pool_address;
 
-    // Deserialize the stake pool account data
-    let stake_pool = get_stake_pool(&client, &stake_pool_pubkey);
-
-    let withdraw_authority = spl_stake_pool::find_withdraw_authority_program_address(
-        &spl_stake_pool::id(),
-        &stake_pool_pubkey,
-    )
-    .0;
-
     let mut home_dir = dirs::home_dir().unwrap();
     home_dir.push(".config/solana/id.json");
     let payer_keypair_path = home_dir.to_str().unwrap().to_string();
@@ -60,58 +51,56 @@ fn main() {
     let balance = payer_account.lamports();
     println!("Current available balance: {}", balance);
 
-    let pool_token_receiver_account =
-        get_associated_token_address(&payer_keypair.pubkey(), &stake_pool.pool_mint);
-
     let data = Data {
         client,
         stake_pool_pubkey,
         payer_keypair,
     };
 
-    // Print out some details about the stake pool
-    println!("\n==========================================");
-    println!("Stake Pool Details");
-    println!("==========================================");
-    println!("Stake Pool Pubkey: {}", stake_pool_pubkey);
-    println!("Stake Pool Manager: {}", stake_pool.manager);
-    println!("Pool Reserve stake: {:?}", stake_pool.reserve_stake);
-    println!("Stake Pool Mint Account: {}", stake_pool.pool_mint);
-    println!("Withdraw authority: {}", withdraw_authority);
-    println!("Associated Token Account: {}", pool_token_receiver_account);
-
-    println!("------------------------------------------");
-    println!("Financials");
-    println!("------------------------------------------");
-    println!("SOL deposit fee: {}", stake_pool.sol_deposit_fee);
-    println!("Total Staked SOL (lamports): {}", stake_pool.total_lamports);
-    println!("Pool Token Supply: {}", stake_pool.pool_token_supply);
-    println!("==========================================\n");
+    print_stake_pool_related_addresses(&data);
+    print_stake_pool_financials(&data);
 
     update_stake_pool(&data);
 
-    deposit_sol(
-        &data,
-        &withdraw_authority,
-        &pool_token_receiver_account,
-        2.3,
-    );
+    deposit_sol(&data, 2.3);
 
-    let stake_pool = get_stake_pool(&data.client, &stake_pool_pubkey);
-
-    println!("------------------------------------------");
-    println!("New Financials");
-    println!("------------------------------------------");
-    println!("Total Staked SOL (lamports): {}", stake_pool.total_lamports);
-    println!("Pool Token Supply: {}", stake_pool.pool_token_supply);
+    print_stake_pool_financials(&data);
 }
 
-fn get_stake_pool(client: &RpcClient, stake_pool_pubkey: &Pubkey) -> StakePool {
-    let stake_pool_account = client.get_account(stake_pool_pubkey).unwrap();
+fn get_stake_pool(data: &Data) -> StakePool {
+    let stake_pool_account = data.client.get_account(&data.stake_pool_pubkey).unwrap();
     let mut stake_pool_account_data = stake_pool_account.data.as_slice();
 
     // Deserialize the stake pool account data
     StakePool::deserialize(&mut stake_pool_account_data).unwrap()
+}
+
+fn print_stake_pool_related_addresses(data: &Data) {
+    let stake_pool = get_stake_pool(data);
+
+    let withdraw_authority = spl_stake_pool::find_withdraw_authority_program_address(
+        &spl_stake_pool::id(),
+        &data.stake_pool_pubkey,
+    )
+    .0;
+
+    println!("\n==========================================");
+    println!("Stake Pool Details");
+    println!("==========================================");
+    println!("Stake Pool Pubkey: {}", data.stake_pool_pubkey);
+    println!("Stake Pool Manager: {}", stake_pool.manager);
+    println!("Pool Reserve stake: {:?}", stake_pool.reserve_stake);
+    println!("Stake Pool Mint Account: {}", stake_pool.pool_mint);
+    println!("Withdraw authority: {}", withdraw_authority);
+}
+
+fn print_stake_pool_financials(data: &Data) {
+    let stake_pool = get_stake_pool(&data);
+    println!("\n------------------------------------------");
+    println!("Stake Pool Financials");
+    println!("------------------------------------------");
+    println!("Total Staked SOL (lamports): {}", stake_pool.total_lamports);
+    println!("Pool Token Supply: {}", stake_pool.pool_token_supply);
 }
 
 fn send_instructions(
@@ -143,7 +132,7 @@ fn send_instructions(
 }
 
 fn update_stake_pool(data: &Data) {
-    let stake_pool = get_stake_pool(&data.client, &data.stake_pool_pubkey);
+    let stake_pool = get_stake_pool(&data);
     // Fetch the validator list account
     let validator_list_pubkey = stake_pool.validator_list;
     let validator_list_account = data.client.get_account(&validator_list_pubkey).unwrap();
@@ -190,13 +179,8 @@ fn update_stake_pool(data: &Data) {
     );
 }
 
-fn deposit_sol(
-    data: &Data,
-    withdraw_authority: &Pubkey,
-    pool_token_receiver_account: &Pubkey,
-    amount: f64,
-) {
-    let stake_pool = get_stake_pool(&data.client, &data.stake_pool_pubkey);
+fn deposit_sol(data: &Data, amount: f64) {
+    let stake_pool = get_stake_pool(&data);
     let fee_payer = data.payer_keypair.insecure_clone();
     let amount = solana_native_token::sol_to_lamports(amount);
 
@@ -214,17 +198,24 @@ fn deposit_sol(
         amount,
     ));
 
+    let pool_token_receiver_account =
+        get_associated_token_address(&data.payer_keypair.pubkey(), &stake_pool.pool_mint);
     let referrer_token_account = pool_token_receiver_account;
+    let withdraw_authority = spl_stake_pool::find_withdraw_authority_program_address(
+        &spl_stake_pool::id(),
+        &data.stake_pool_pubkey,
+    )
+    .0;
 
     let deposit_instruction = spl_stake_pool::instruction::deposit_sol(
         &spl_stake_pool::id(),
         &data.stake_pool_pubkey,
-        withdraw_authority,
+        &withdraw_authority,
         &stake_pool.reserve_stake,
         &user_sol_transfer.pubkey(),
-        pool_token_receiver_account,
+        &pool_token_receiver_account,
         &stake_pool.manager_fee_account,
-        referrer_token_account,
+        &referrer_token_account,
         &stake_pool.pool_mint,
         &spl_token::id(),
         amount,
