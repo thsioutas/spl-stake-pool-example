@@ -5513,7 +5513,6 @@ dependencies = [
  "dirs",
  "solana-clap-v3-utils",
  "solana-client",
- "solana-hash",
  "solana-instruction",
  "solana-message",
  "solana-native-token",

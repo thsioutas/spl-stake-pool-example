@@ -12,5 +12,5 @@ spl-stake-pool deposit-sol $stake_pool_address 10
 ```
 
 ```bash
-./target/debug/spl-stake-pool-example --stake-pool-address $stake_pool_address
+./target/debug/spl-stake-pool-example --pool $stake_pool_address deposit-sol -a 10
 ```

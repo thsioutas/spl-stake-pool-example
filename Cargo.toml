@@ -9,7 +9,6 @@ clap = { version = "3.2.23", features = ["derive"] }
 dirs = "5.0"
 solana-clap-v3-utils = "2.1" 
 solana-client = "2.0.18"
-solana-hash = "2.2"
 solana-instruction = "2.2"
 solana-native-token = "2.2"
 solana-message = "2.2"

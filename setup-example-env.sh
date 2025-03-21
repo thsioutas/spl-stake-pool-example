@@ -1,7 +1,7 @@
 #!/bin/bash
 
 stake_pool_cli_script_dir=$1
-if [ -z "${variable_name}" ]; then
+if [ -z "${stake_pool_cli_script_dir}" ]; then
     echo Set default
     stake_pool_cli_script_dir="$HOME/stake-pool/clients/cli/scripts"
 fi
